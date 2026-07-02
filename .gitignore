@@ -1,0 +1,46 @@
+# Build outputs
+*.o
+*.obj
+*.elf
+*.hex
+*.bin
+*.map
+*.lst
+*.axf
+*.bak
+*.dep
+*.d
+
+# Keil / MDK generated files
+Listings/
+Objects/
+RTE/_Target_*/
+*.uvguix.*
+*.uvoptx
+*.uvprojx.bak
+JLinkLog.txt
+JLinkSettings.ini
+
+# STM32CubeIDE / Eclipse generated files
+.metadata/
+.settings/
+Debug/
+Release/
+*.launch
+
+# Local editor / OS files
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+*.tmp
+*.log
+
+# Large contest reference packages should stay outside this repo
+*.zip
+*.rar
+*.7z
+*.pdf
+*.mp4
+*.avi
+*.mov
