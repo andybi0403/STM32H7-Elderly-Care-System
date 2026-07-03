@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能养老监护系统 — PC模拟器 (东南大学 集成电路学院)</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1a2e;color:#fff;font-family:'Microsoft YaHei','SimHei',sans-serif;
+     display:flex;justify-content:center;align-items:center;min-height:100vh}
+.sim{width:480px;height:390px;background:#1a1a2e;border-radius:16px;
+     box-shadow:0 0 40px rgba(0,212,255,.15);position:relative;overflow:hidden}
+.page{position:absolute;top:0;left:0;width:100%;height:100%;display:none}
+.page.active{display:block}
+/* ---- top bar ---- */
+.topbar{display:flex;align-items:center;padding:8px 16px;gap:12px;
+        background:#162a4a;border-radius:12px;margin:6px 12px}
+.topbar .dot{width:8px;height:8px;border-radius:50%}
+.topbar .dot.on{background:#0f0}
+.topbar .dot.off{background:#666}
+.topbar .label{font-size:13px;color:#aaa}
+.topbar .time{font-size:24px;font-weight:bold;margin-left:auto}
+.topbar .date{font-size:11px;color:#888;margin-left:6px}
+/* ---- cards ---- */
+.card{background:#162a4a;border-radius:14px;padding:14px 18px;margin:8px 12px}
+.card .row{display:flex;align-items:center;gap:16px}
+.hr-big{font-size:42px;font-weight:bold;color:#f44}
+.hr-unit{font-size:14px;color:#999}
+.spo2-val{font-size:22px;font-weight:bold;color:#0f8}
+.temp-val{font-size:18px;color:#ddd}
+.steps-val{font-size:26px;font-weight:bold;color:#0cf}
+.steps-unit{font-size:13px;color:#999}
+.bar-wrap{background:#282848;border-radius:8px;height:14px;overflow:hidden;flex:1}
+.bar-fill{height:100%;border-radius:8px;transition:width .3s}
+.bar-fill.green{background:#0f8}
+.bar-fill.accent{background:#0cf}
+/* ---- alarm banner ---- */
+.alarm{background:#fc0;color:#500;padding:8px 16px;border-radius:10px;
+       margin:6px 12px;font-weight:bold;font-size:15px;display:none}
+.alarm.show{display:block}
+/* ---- status dots ---- */
+.stats{display:flex;gap:32px;padding:4px 18px;font-size:13px}
+.stats .ok{color:#0f8}.stats .bad{color:#f44}
+/* ---- nav buttons ---- */
+.nav{display:flex;gap:16px;padding:12px;justify-content:center}
+.nav button{flex:1;max-width:140px;padding:12px 0;border:none;border-radius:12px;
+            font-size:16px;cursor:pointer;background:#162a4a;color:#fff;transition:.15s}
+.nav button:hover{background:#244a6a}
+.nav button:active{transform:scale(.97)}
+.nav .btn-green{background:#0a4;color:#fff}
+.nav .btn-orange{background:#e80;color:#fff}
+.nav .btn-green:hover{background:#0c6}
+.nav .btn-orange:hover{background:#fa3}
+/* ---- medication ---- */
+.page-title{font-size:20px;font-weight:bold;padding:10px 18px;display:flex;
+            justify-content:space-between;align-items:center}
+.page-title .back{font-size:14px;color:#aaa;cursor:pointer;background:#162a4a;
+                  padding:6px 16px;border-radius:8px;transition:.15s}
+.page-title .back:hover{background:#244a6a}
+.slot-nav{display:flex;align-items:center;justify-content:center;gap:20px;padding:4px 0}
+.slot-nav .arr{font-size:22px;cursor:pointer;padding:4px 12px;border-radius:8px;
+              background:#162a4a;user-select:none;transition:.15s}
+.slot-nav .arr:hover{background:#244a6a}
+.slot-nav .arr.disabled{color:#444;cursor:default;pointer-events:none}
+.slot-nav .info{font-size:16px;color:#0cf;font-weight:bold}
+.edit-input{background:#283250;border:2px solid #0cf;border-radius:8px;padding:8px 12px;
+            font-size:20px;color:#0cf;font-family:inherit;width:240px;outline:none}
+.edit-qty{display:flex;align-items:center;gap:16px}
+.edit-qty button{width:50px;height:40px;border:none;border-radius:10px;
+                 font-size:24px;cursor:pointer;color:#fff;transition:.15s}
+.edit-qty button.minus{background:#c33}
+.edit-qty button.plus{background:#0a4}
+.edit-qty button:active{transform:scale(.95)}
+.edit-qty .qty-val{font-size:26px;font-weight:bold;min-width:60px;text-align:center}
+/* ---- voice ---- */
+.voice-card{text-align:center;padding:40px 0}
+.voice-card .icon{font-size:64px;margin-bottom:12px}
+.voice-card .cmd{font-size:20px;color:#0cf;margin-bottom:20px}
+.voice-card .list{font-size:14px;color:#999;line-height:2}
+/* ---- back button top right ---- */
+.back-top{position:absolute;top:12px;right:16px;font-size:13px;color:#aaa;
+          cursor:pointer;background:#162a4a;padding:5px 14px;border-radius:8px;z-index:2}
+.back-top:hover{background:#244a6a}
+</style>
+</head>
+<body>
+<div class="sim" id="sim">
+
+<!-- ========== 页面0: 主页 ========== -->
+<div class="page active" id="pg0">
+  <div class="topbar">
+    <span id="wifi-dot" class="dot on"></span><span class="label" id="wifi-txt">WiFi</span>
+    <span id="bt-dot" class="dot on"></span><span class="label" id="bt-txt">蓝牙</span>
+    <span class="time" id="clock">08:00:00</span>
+    <span class="date" id="date">2026-05-20</span>
+  </div>
+  <div class="card">
+    <div class="row">
+      <div><span style="color:#f44">♥ 心率</span><br>
+           <span class="hr-big" id="home-hr">72</span> <span class="hr-unit">bpm</span></div>
+      <div style="flex:1">
+        <div>血氧 <span class="spo2-val" id="home-spo2">98%</span></div>
+        <div class="bar-wrap"><div class="bar-fill green" id="home-spo2-bar" style="width:98%"></div></div>
+        <div style="margin-top:8px">体温 <span class="temp-val" id="home-temp">36.5 ℃</span></div>
+      </div>
+    </div>
+    <div style="margin-top:10px"><span class="steps-val" id="home-steps">1280</span> <span class="steps-unit">步</span></div>
+    <div class="stats" style="margin-top:6px">
+      <span id="home-fall" class="ok">● 无跌倒</span>
+      <span id="home-hr-abn" class="ok">● 心率正常</span>
+    </div>
+  </div>
+  <div class="alarm" id="home-alarm">⏰ 服药提醒: <span id="home-alarm-drug"></span> 时间到了!</div>
+  <div class="nav">
+    <button onclick="go(1)">健康数据</button>
+    <button onclick="go(2)">服药管理</button>
+    <button onclick="go(3)">语音助手</button>
+  </div>
+</div>
+
+<!-- ========== 页面1: 健康数据 ========== -->
+<div class="page" id="pg1">
+  <div class="page-title">生命体征详情 <span class="back" onclick="go(0)">← 返回</span></div>
+  <div class="card">
+    <div style="margin-bottom:10px;color:#999;font-size:13px">血氧饱和度 (SpO2)</div>
+    <div class="bar-wrap" style="height:20px;margin-bottom:4px"><div class="bar-fill green" id="hl-spo2-bar" style="width:98%"></div></div>
+    <span class="spo2-val" style="font-size:28px" id="hl-spo2">98%</span>
+  </div>
+  <div class="card">
+    <div style="color:#999;font-size:13px">心率 (Heart Rate)</div>
+    <span class="hr-big" style="font-size:56px" id="hl-hr">72</span> <span class="hr-unit">bpm</span>
+    <div style="margin-top:6px;font-size:20px;font-weight:bold" id="hl-hr-st">正常</div>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-around">
+      <div>体温<br><span class="temp-val" style="font-size:22px" id="hl-temp">36.5 ℃</span></div>
+      <div>今日步数<br><span class="steps-val" id="hl-steps">1280</span></div>
+    </div>
+  </div>
+  <div class="card stats">
+    <span id="hl-fall" class="ok">● 跌倒检测: 正常</span>
+    <span id="hl-hr-abn" class="ok">● 心率异常: 无</span>
+  </div>
+</div>
+
+<!-- ========== 页面2: 服药管理 ========== -->
+<div class="page" id="pg2">
+  <div class="back-top" onclick="go(0)">← 主页</div>
+  <div class="page-title">服药管理</div>
+  <div class="slot-nav">
+    <span class="arr" id="slot-prev" onclick="prevSlot()">◀</span>
+    <span class="info" id="slot-info">第 1 / 4 格</span>
+    <span class="arr" id="slot-next" onclick="nextSlot()">▶</span>
+  </div>
+  <div class="card" id="med-browse">
+    <div style="font-size:22px;color:#0cf;font-weight:bold;margin-bottom:8px" id="med-name">药品: 阿司匹林</div>
+    <div style="font-size:18px;color:#f44;font-weight:bold;margin-bottom:8px" id="med-countdown">距下次服用: --:--:--</div>
+    <div style="color:#999;font-size:13px">剩余药量</div>
+    <div class="bar-wrap" style="height:18px;margin:4px 0"><div class="bar-fill accent" id="med-bar" style="width:80%"></div></div>
+    <div id="med-remain-txt">80 / 100 片</div>
+    <div id="med-low-warn" style="color:#f44;font-size:13px;font-weight:bold;margin-top:6px;display:none"></div>
+    <div style="margin-top:8px;font-size:16px" id="med-state">药盒状态: ● 已关闭</div>
+  </div>
+  <!-- 编辑模式 -->
+  <div class="card" id="med-edit" style="display:none">
+    <div style="color:#999;font-size:13px;margin-bottom:4px">药品名称 (键盘输入, Enter确认)</div>
+    <input class="edit-input" id="edit-name-input" maxlength="11" placeholder="输入药品名...">
+    <div style="margin-top:8px"><button onclick="cyclePreset(-1)" style="background:#162a4a;color:#fff;border:none;padding:6px 14px;border-radius:8px;cursor:pointer;margin-right:8px">◀ 预设</button>
+    <button onclick="cyclePreset(1)" style="background:#162a4a;color:#fff;border:none;padding:6px 14px;border-radius:8px;cursor:pointer">预设 ▶</button></div>
+    <div style="margin-top:14px;color:#999;font-size:13px">修改数量</div>
+    <div class="edit-qty" style="margin-top:4px">
+      <button class="minus" onclick="chgQty(-1)">−</button>
+      <span class="qty-val" id="edit-qty-val">80</span>
+      <button class="plus" onclick="chgQty(1)">+</button>
+    </div>
+    <div style="margin-top:16px">
+      <button onclick="doneEdit()" style="background:#0a4;color:#fff;border:none;padding:10px 40px;border-radius:10px;font-size:16px;cursor:pointer">✓ 完成编辑</button>
+    </div>
+  </div>
+  <div class="nav">
+    <button class="btn-green" onclick="dismissAlarm()">已服用</button>
+    <button class="btn-orange" id="btn-edit-toggle" onclick="toggleEdit()">✎ 修改药品</button>
+  </div>
+</div>
+
+<!-- ========== 页面3: 语音助手 ========== -->
+<div class="page" id="pg3">
+  <div class="page-title">语音助手 <span class="back" onclick="go(0)">← 返回</span></div>
+  <div class="voice-card">
+    <div class="icon">🎤</div>
+    <div class="cmd">说 "小护工" 唤醒</div>
+    <div style="color:#999;margin-bottom:16px">语音识别模块接入中...</div>
+    <div class="list">功能: 查药盒 / 查心率 / 问天气 / 紧急呼叫</div>
+  </div>
+</div>
+
+</div><!-- /sim -->
+
+<script>
+/* ================================================================
+ * 数据模型 — 等同于 health_data.h 的 g_health_data
+ * ================================================================ */
+const DRUG_NAMES = ['阿司匹林','降压药','降糖药','钙片','维生素D','降脂药','安眠药','止痛药','胃药','感冒药'];
+let drugCurIdx = 0;
+
+let g = {
+    heart_rate: 72, blood_oxygen: 98, temperature: 36.5, steps: 1280,
+    fall_detected: 0, heart_abnormal: 0,
+    med: [
+        { name:'阿司匹林', remaining:80, threshold:10 },
+        { name:'降压药',   remaining:60, threshold:8  },
+        { name:'降糖药',   remaining:45, threshold:5  },
+        { name:'钙片',     remaining:90, threshold:12 }
+    ],
+    med_slot_idx: 0, med_alarm: 0,
+    wifi_on: 1, bt_on: 1,
+    page: 0
+};
+let editMode = false;
+
+/* ================================================================
+ * 页面切换
+ * ================================================================ */
+function go(p) {
+    g.page = p;
+    document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+    document.getElementById('pg'+p).classList.add('active');
+    if (p === 2) { updateSlotNav(); syncEditToSlot(); }
+}
+
+/* ================================================================
+ * 服药管理 — 翻页
+ * ================================================================ */
+function prevSlot() { if (g.med_slot_idx > 0) { g.med_slot_idx--; updateSlotNav(); syncEditToSlot(); } }
+function nextSlot() { if (g.med_slot_idx < 3) { g.med_slot_idx++; updateSlotNav(); syncEditToSlot(); } }
+function updateSlotNav() {
+    document.getElementById('slot-info').textContent = `第 ${g.med_slot_idx+1} / 4 格`;
+    document.getElementById('slot-prev').classList.toggle('disabled', g.med_slot_idx === 0);
+    document.getElementById('slot-next').classList.toggle('disabled', g.med_slot_idx === 3);
+}
+
+/* ================================================================
+ * 服药管理 — 编辑
+ * ================================================================ */
+function toggleEdit() {
+    editMode = !editMode;
+    document.getElementById('med-browse').style.display = editMode ? 'none' : 'block';
+    document.getElementById('med-edit').style.display = editMode ? 'block' : 'none';
+    document.getElementById('btn-edit-toggle').textContent = editMode ? '← 取消编辑' : '✎ 修改药品';
+    if (editMode) syncEditToSlot();
+}
+function syncEditToSlot() {
+    let s = g.med[g.med_slot_idx];
+    document.getElementById('edit-name-input').value = s.name;
+    document.getElementById('edit-qty-val').textContent = s.remaining;
+    drugCurIdx = DRUG_NAMES.indexOf(s.name);
+    if (drugCurIdx < 0) drugCurIdx = 0;
+}
+function cyclePreset(dir) {
+    drugCurIdx = (drugCurIdx + dir + DRUG_NAMES.length) % DRUG_NAMES.length;
+    document.getElementById('edit-name-input').value = DRUG_NAMES[drugCurIdx];
+}
+function chgQty(d) {
+    let s = g.med[g.med_slot_idx];
+    s.remaining = Math.max(0, Math.min(100, s.remaining + d));
+    document.getElementById('edit-qty-val').textContent = s.remaining;
+}
+function doneEdit() {
+    let s = g.med[g.med_slot_idx];
+    let input = document.getElementById('edit-name-input').value.trim();
+    if (input) s.name = input;
+    s.remaining = parseInt(document.getElementById('edit-qty-val').textContent) || 0;
+    editMode = false;
+    document.getElementById('med-browse').style.display = 'block';
+    document.getElementById('med-edit').style.display = 'none';
+    document.getElementById('btn-edit-toggle').textContent = '✎ 修改药品';
+}
+function dismissAlarm() { g.med_alarm = 0; }
+
+/* ================================================================
+ * UI 刷新 — 每 50ms 从 g 结构体读数据 → 更新 DOM
+ * ================================================================ */
+function refreshUI() {
+    let s = g.med[g.med_slot_idx];
+
+    /* 主页 */
+    document.getElementById('home-hr').textContent = g.heart_rate;
+    document.getElementById('home-spo2').textContent = g.blood_oxygen + '%';
+    document.getElementById('home-spo2-bar').style.width = g.blood_oxygen + '%';
+    document.getElementById('home-temp').textContent = g.temperature.toFixed(1) + ' ℃';
+    document.getElementById('home-steps').textContent = g.steps;
+    document.getElementById('home-fall').textContent = g.fall_detected ? '⚠ 跌倒!' : '● 无跌倒';
+    document.getElementById('home-fall').className = g.fall_detected ? 'bad' : 'ok';
+    document.getElementById('home-hr-abn').textContent = g.heart_abnormal ? '⚠ 心率异常!' : '● 心率正常';
+    document.getElementById('home-hr-abn').className = g.heart_abnormal ? 'bad' : 'ok';
+
+    let alarmEl = document.getElementById('home-alarm');
+    if (g.med_alarm) {
+        alarmEl.classList.add('show');
+        document.getElementById('home-alarm-drug').textContent = g.med[0].name;
+    } else {
+        alarmEl.classList.remove('show');
+    }
+
+    /* 连接状态 */
+    document.getElementById('wifi-dot').className = 'dot ' + (g.wifi_on ? 'on' : 'off');
+    document.getElementById('bt-dot').className = 'dot ' + (g.bt_on ? 'on' : 'off');
+
+    /* 健康数据页 */
+    document.getElementById('hl-hr').textContent = g.heart_rate;
+    document.getElementById('hl-spo2').textContent = g.blood_oxygen + '%';
+    document.getElementById('hl-spo2-bar').style.width = g.blood_oxygen + '%';
+    document.getElementById('hl-temp').textContent = g.temperature.toFixed(1) + ' ℃';
+    document.getElementById('hl-steps').textContent = g.steps;
+    let hrSt = document.getElementById('hl-hr-st');
+    if (g.heart_abnormal) { hrSt.textContent = '异常! 请立即关注'; hrSt.style.color = '#f44'; }
+    else if (g.heart_rate > 100) { hrSt.textContent = '偏高'; hrSt.style.color = '#fc0'; }
+    else if (g.heart_rate < 60)  { hrSt.textContent = '偏低'; hrSt.style.color = '#fc0'; }
+    else                         { hrSt.textContent = '正常'; hrSt.style.color = '#0f8'; }
+    document.getElementById('hl-fall').textContent = g.fall_detected ? '⚠ 跌倒检测: 触发!' : '● 跌倒检测: 正常';
+    document.getElementById('hl-fall').className = g.fall_detected ? 'bad' : 'ok';
+    document.getElementById('hl-hr-abn').textContent = g.heart_abnormal ? '⚠ 心率异常: 检测到' : '● 心率异常: 无';
+    document.getElementById('hl-hr-abn').className = g.heart_abnormal ? 'bad' : 'ok';
+
+    /* 服药管理页 */
+    document.getElementById('med-name').textContent = '药品: ' + s.name;
+    let rm = (60 - new Date().getMinutes()) % 60;
+    let rs = (60 - new Date().getSeconds()) % 60;
+    if (rs === 60) rs = 0;
+    document.getElementById('med-countdown').textContent =
+        `距下次服用: ${String(Math.floor(rm/60)).padStart(2,'0')}:${String(rm).padStart(2,'0')}:${String(rs).padStart(2,'0')}`;
+    document.getElementById('med-bar').style.width = s.remaining + '%';
+    document.getElementById('med-remain-txt').textContent = s.remaining + ' / 100 片';
+    let lowWarn = document.getElementById('med-low-warn');
+    if (s.remaining <= s.threshold) {
+        lowWarn.style.display = 'block';
+        lowWarn.textContent = `⚠ 低于阈值(${s.threshold}片), 请及时补充!`;
+    } else { lowWarn.style.display = 'none'; }
+    let stateEl = document.getElementById('med-state');
+    if (s.remaining <= 0) stateEl.innerHTML = '药盒状态: <span style="color:#f44">● 已空!</span>';
+    else if (g.med_alarm) stateEl.innerHTML = '药盒状态: <span style="color:#0f8">● 已打开</span>';
+    else stateEl.innerHTML = '药盒状态: <span style="color:#999">● 已关闭</span>';
+}
+
+/* ================================================================
+ * 时钟同步
+ * ================================================================ */
+function updateClock() {
+    let now = new Date();
+    document.getElementById('clock').textContent =
+        String(now.getHours()).padStart(2,'0') + ':' +
+        String(now.getMinutes()).padStart(2,'0') + ':' +
+        String(now.getSeconds()).padStart(2,'0');
+    document.getElementById('date').textContent =
+        now.getFullYear() + '-' +
+        String(now.getMonth()+1).padStart(2,'0') + '-' +
+        String(now.getDate()).padStart(2,'0');
+}
+
+/* ================================================================
+ * 虚拟传感器模拟器 (每秒随机波动)
+ * ================================================================ */
+function simulate() {
+    g.heart_rate   = 70 + Math.floor(Math.random() * 11) - 5;
+    g.blood_oxygen = 97 + Math.floor(Math.random() * 5)  - 2;
+    g.temperature  = 36.5 + (Math.floor(Math.random() * 7) - 3) * 0.1;
+    g.steps       += Math.floor(Math.random() * 4);
+
+    let h = new Date().getHours();
+    g.med_alarm = (h === 8 || h === 12 || h === 18) ? 1 : 0;
+
+    if (Math.random() < 0.1 && g.med[g.med_slot_idx].remaining > 0)
+        g.med[g.med_slot_idx].remaining--;
+    if (Math.random() < 0.02) g.fall_detected   ^= 1;
+    if (Math.random() < 0.03) g.heart_abnormal  ^= 1;
+}
+
+/* ================================================================
+ * 主循环 — 模拟 FreeRTOS GUI_Task 每 50ms 执行一次
+ * ================================================================ */
+setInterval(refreshUI, 50);       /* 50ms UI刷新 */
+setInterval(updateClock, 200);    /* 200ms 时钟同步 */
+setInterval(simulate, 1000);      /* 1s 传感器模拟 */
+updateClock();
+refreshUI();
+updateSlotNav();
+
+/* 回车键在编辑输入框中确认 */
+document.getElementById('edit-name-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { doneEdit(); }
+});
+</script>
+</body>
+</html>
