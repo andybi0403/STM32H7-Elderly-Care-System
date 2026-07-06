@@ -71,6 +71,11 @@ typedef struct {
 #define TOUCH_MOSI GPIO_PIN_14
 #define TOUCH_CS GPIO_PIN_15
 
+#define KEY_WKUP GPIO_PIN_13
+#define KEY0_PIN GPIO_PIN_9
+#define KEY1_PIN GPIO_PIN_8
+#define KEY2_PIN GPIO_PIN_7
+
 #define LCD_DATA_MASK_A (GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_8 | \
                          GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_15)
 #define LCD_DATA_MASK_B (GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_10 | \
@@ -97,16 +102,15 @@ typedef struct {
 #define TOUCH_SWAP_XY 1U
 #define TOUCH_INV_X   1U
 #define TOUCH_INV_Y   0U
+#define TOUCH_DIAG_MODE 0U
 
 static uint16_t g_lcd_id;
 static UI_Data_t g_ui_data = {
     72, 98, 365, 2, -1, 0, 1, 126, 0, 0, 1
 };
 static uint8_t g_current_page;
-static uint8_t g_last_pressed;
-static uint16_t g_last_x;
-static uint16_t g_last_y;
 static uint8_t g_needs_redraw = 1;
+static uint8_t g_key_ready = 1;
 
 static void LCD_UI_UNUSED lcd_mpu_init(void)
 {
@@ -172,6 +176,13 @@ static void gpio_pin_input_pullup(GPIO_TypeDef *gpio, uint32_t pin)
     gpio->PUPDR = (gpio->PUPDR & ~(3UL << shift)) | (GPIO_PUPDR_PULLUP << shift);
 }
 
+static void gpio_pin_input_pulldown(GPIO_TypeDef *gpio, uint32_t pin)
+{
+    uint32_t shift = pin * 2U;
+    gpio->MODER &= ~(3UL << shift);
+    gpio->PUPDR = (gpio->PUPDR & ~(3UL << shift)) | (GPIO_PUPDR_PULLDOWN << shift);
+}
+
 static void lcd_bus_init(void)
 {
     RCC_AHB4ENR_REG |= RCC_AHB4ENR_GPIOAEN | RCC_AHB4ENR_GPIOBEN |
@@ -210,6 +221,10 @@ static void lcd_bus_init(void)
     gpio_pin_input_pullup(GPIOE, 13);
     gpio_pin_output(GPIOE, 14);
     gpio_pin_output(GPIOE, 15);
+    gpio_pin_input_pulldown(GPIOC, 13);
+    gpio_pin_input_pullup(GPIOE, 7);
+    gpio_pin_input_pullup(GPIOE, 8);
+    gpio_pin_input_pullup(GPIOE, 9);
 
     GPIOD->BSRR = GPIO_PIN_15 | LCD_CTRL_CS;
     GPIOA->BSRR = LCD_CTRL_RD;
@@ -546,10 +561,10 @@ static void draw_header(const char *title)
 
 static void draw_nav(void)
 {
-    draw_button(0, 286, 60, 34, "HOME", g_current_page == 0);
-    draw_button(60, 286, 60, 34, "HEAL", g_current_page == 1);
-    draw_button(120, 286, 60, 34, "PILL", g_current_page == 2);
-    draw_button(180, 286, 60, 34, "ALRT", g_current_page == 3);
+    draw_button(0, 286, 60, 34, "KEY0", g_current_page == 0);
+    draw_button(60, 286, 60, 34, "KEY1", g_current_page == 1);
+    draw_button(120, 286, 60, 34, "KEY2", g_current_page == 2);
+    draw_button(180, 286, 60, 34, "WKUP", g_current_page == 3);
 }
 
 static void draw_home(void)
@@ -748,7 +763,7 @@ static uint16_t clamp_map(uint16_t raw, uint16_t out_max, uint8_t invert)
     return (uint16_t)value;
 }
 
-static uint8_t touch_read_screen(uint16_t *x, uint16_t *y)
+static uint8_t LCD_UI_UNUSED touch_read_screen(uint16_t *x, uint16_t *y)
 {
     uint16_t raw_x;
     uint16_t raw_y;
@@ -770,6 +785,81 @@ static uint8_t touch_read_screen(uint16_t *x, uint16_t *y)
     *x = sx;
     *y = sy;
     return 1;
+}
+
+static uint8_t LCD_UI_UNUSED touch_read_diag(uint16_t *raw_x, uint16_t *raw_y, uint16_t *sx, uint16_t *sy)
+{
+    if (!touch_read_raw(raw_x, raw_y)) {
+        return 0;
+    }
+
+#if TOUCH_SWAP_XY
+    *sx = clamp_map(*raw_y, LCD_W - 1U, TOUCH_INV_X);
+    *sy = clamp_map(*raw_x, LCD_H - 1U, TOUCH_INV_Y);
+#else
+    *sx = clamp_map(*raw_x, LCD_W - 1U, TOUCH_INV_X);
+    *sy = clamp_map(*raw_y, LCD_H - 1U, TOUCH_INV_Y);
+#endif
+    return 1;
+}
+
+static void LCD_UI_UNUSED draw_touch_diag(uint8_t down, uint16_t raw_x, uint16_t raw_y, uint16_t sx, uint16_t sy)
+{
+    lcd_fill(0, 0, LCD_W, LCD_H, COLOR_BG);
+    lcd_fill(0, 0, LCD_W, 30, COLOR_HEADER);
+    draw_text(8, 8, "TOUCH TEST", COLOR_WHITE, COLOR_HEADER, 2);
+
+    draw_panel(8, 42, 224, 76, COLOR_PANEL);
+    draw_text(20, 54, down ? "PEN DOWN" : "PEN UP", down ? COLOR_GREEN : COLOR_RED, COLOR_PANEL, 2);
+    draw_text(20, 86, "HOLD AND MOVE", COLOR_DARK, COLOR_PANEL, 1);
+
+    draw_panel(8, 128, 224, 84, COLOR_PANEL);
+    draw_text(20, 140, "RAW X", COLOR_DARK, COLOR_PANEL, 1);
+    draw_num(82, 136, raw_x, COLOR_BLUE, COLOR_PANEL, 2);
+    draw_text(20, 172, "RAW Y", COLOR_DARK, COLOR_PANEL, 1);
+    draw_num(82, 168, raw_y, COLOR_BLUE, COLOR_PANEL, 2);
+
+    draw_panel(8, 222, 224, 82, COLOR_PANEL);
+    draw_text(20, 234, "MAP X", COLOR_DARK, COLOR_PANEL, 1);
+    draw_num(82, 230, sx, COLOR_ORANGE, COLOR_PANEL, 2);
+    draw_text(20, 266, "MAP Y", COLOR_DARK, COLOR_PANEL, 1);
+    draw_num(82, 262, sy, COLOR_ORANGE, COLOR_PANEL, 2);
+}
+
+static uint8_t key_scan(void)
+{
+    uint8_t key = 0;
+    uint8_t wkup_pressed = (GPIOC->IDR & KEY_WKUP) != 0U;
+    uint8_t key0_pressed = (GPIOE->IDR & KEY0_PIN) == 0U;
+    uint8_t key1_pressed = (GPIOE->IDR & KEY1_PIN) == 0U;
+    uint8_t key2_pressed = (GPIOE->IDR & KEY2_PIN) == 0U;
+
+    if (g_key_ready && (wkup_pressed || key0_pressed || key1_pressed || key2_pressed)) {
+        delay_ms(12);
+        g_key_ready = 0;
+
+        if ((GPIOE->IDR & KEY2_PIN) == 0U) key = 3;
+        if ((GPIOE->IDR & KEY1_PIN) == 0U) key = 2;
+        if ((GPIOE->IDR & KEY0_PIN) == 0U) key = 1;
+        if ((GPIOC->IDR & KEY_WKUP) != 0U) key = 4;
+    } else if (!wkup_pressed && !key0_pressed && !key1_pressed && !key2_pressed) {
+        g_key_ready = 1;
+    }
+
+    return key;
+}
+
+static void UI_OnKey(uint8_t key)
+{
+    if (key == 0U) {
+        return;
+    }
+
+    g_current_page = (uint8_t)(key - 1U);
+    if (g_current_page > 3U) {
+        g_current_page = 3U;
+    }
+    g_needs_redraw = 1;
 }
 
 void UI_OnTouch(uint16_t x, uint16_t y, uint8_t pressed)
@@ -857,7 +947,7 @@ void UI_Init(void)
     GPIOD->BSRR = GPIO_PIN_15;
 
     g_current_page = 0;
-    g_last_pressed = 0;
+    g_key_ready = 1;
     g_needs_redraw = 1;
     draw_page();
 }
@@ -867,19 +957,16 @@ void UI_FirmwareRun(void)
     UI_Init();
 
     while (1) {
-        uint16_t tx = 0;
-        uint16_t ty = 0;
-        uint8_t pressed = touch_read_screen(&tx, &ty);
-
-        if (pressed) {
-            g_last_x = tx;
-            g_last_y = ty;
-        }
-
-        if (g_last_pressed && !pressed) {
-            UI_OnTouch(g_last_x, g_last_y, 1);
-        }
-        g_last_pressed = pressed;
+#if TOUCH_DIAG_MODE
+        uint16_t raw_x = 0;
+        uint16_t raw_y = 0;
+        uint16_t sx = 0;
+        uint16_t sy = 0;
+        uint8_t pressed = touch_read_diag(&raw_x, &raw_y, &sx, &sy);
+        draw_touch_diag(pressed, raw_x, raw_y, sx, sy);
+        delay_ms(120);
+#else
+        UI_OnKey(key_scan());
 
         if (g_needs_redraw) {
             draw_page();
@@ -891,5 +978,6 @@ void UI_FirmwareRun(void)
         GPIOD->BSRR = GPIO_PIN_14;
         GPIOC->BSRR = (uint32_t)GPIO_PIN_0 << 16;
         delay_ms(80);
+#endif
     }
 }
