@@ -57,8 +57,8 @@ typedef struct {
 
 #define LCD ((LCD_TypeDef *)0x6000FFFEUL)
 
-#define LCD_W 320U
-#define LCD_H 240U
+#define LCD_W 240U
+#define LCD_H 320U
 
 #define LCD_CTRL_CS GPIO_PIN_12
 #define LCD_CTRL_RD GPIO_PIN_5
@@ -320,7 +320,7 @@ static void lcd_ili9341_init(void)
     lcd_write_reg(0xC1, 0x01);
     lcd_write_cmd(0xC5); lcd_write_data(0x30); lcd_write_data(0x30);
     lcd_write_cmd(0xC7); lcd_write_data(0xB7);
-    lcd_write_reg(0x36, 0xA8);
+    lcd_write_reg(0x36, 0x08);
     lcd_write_reg(0x3A, 0x55);
     lcd_write_cmd(0xB1); lcd_write_data(0x00); lcd_write_data(0x1A);
     lcd_write_cmd(0xB6); lcd_write_data(0x0A); lcd_write_data(0xA2);
@@ -510,47 +510,48 @@ static void draw_header(const char *title)
     lcd_fill(0, 0, LCD_W, LCD_H, COLOR_BG);
     lcd_fill(0, 0, LCD_W, 30, COLOR_HEADER);
     draw_text(8, 8, title, COLOR_WHITE, COLOR_HEADER, 2);
-    draw_text(218, 10, g_ui_data.wifi_connected ? "LINK OK" : "NO LINK", COLOR_WHITE, COLOR_HEADER, 1);
+    draw_text(154, 10, g_ui_data.wifi_connected ? "LINK" : "NO LINK", COLOR_WHITE, COLOR_HEADER, 1);
     if (g_ui_data.alarm_active) {
-        lcd_fill(280, 4, 34, 22, COLOR_RED);
-        draw_text(286, 11, "ALM", COLOR_WHITE, COLOR_RED, 1);
+        lcd_fill(208, 4, 28, 22, COLOR_RED);
+        draw_text(214, 11, "A", COLOR_WHITE, COLOR_RED, 1);
     }
 }
 
 static void draw_nav(void)
 {
-    draw_button(0, 206, 80, 34, "HOME", g_current_page == 0);
-    draw_button(80, 206, 80, 34, "HEALTH", g_current_page == 1);
-    draw_button(160, 206, 80, 34, "PILL", g_current_page == 2);
-    draw_button(240, 206, 80, 34, "ALERT", g_current_page == 3);
+    draw_button(0, 286, 60, 34, "HOME", g_current_page == 0);
+    draw_button(60, 286, 60, 34, "HEAL", g_current_page == 1);
+    draw_button(120, 286, 60, 34, "PILL", g_current_page == 2);
+    draw_button(180, 286, 60, 34, "ALRT", g_current_page == 3);
 }
 
 static void draw_home(void)
 {
     draw_header("ELDER CARE");
 
-    draw_panel(8, 40, 96, 72, COLOR_PANEL);
-    draw_text(18, 50, "HEALTH", COLOR_DARK, COLOR_PANEL, 1);
-    draw_num(18, 68, g_ui_data.heart_rate, COLOR_RED, COLOR_PANEL, 2);
-    draw_text(62, 76, "BPM", COLOR_DARK, COLOR_PANEL, 1);
-    draw_text(18, 96, g_ui_data.fall_detected ? "FALL" : "STABLE", g_ui_data.fall_detected ? COLOR_RED : COLOR_GREEN, COLOR_PANEL, 1);
+    draw_panel(8, 38, 108, 70, COLOR_PANEL);
+    draw_text(18, 48, "HEALTH", COLOR_DARK, COLOR_PANEL, 1);
+    draw_num(18, 66, g_ui_data.heart_rate, COLOR_RED, COLOR_PANEL, 2);
+    draw_text(66, 74, "BPM", COLOR_DARK, COLOR_PANEL, 1);
+    draw_text(18, 94, g_ui_data.fall_detected ? "FALL" : "STABLE", g_ui_data.fall_detected ? COLOR_RED : COLOR_GREEN, COLOR_PANEL, 1);
 
-    draw_panel(112, 40, 96, 72, COLOR_PANEL);
-    draw_text(122, 50, "SPO2", COLOR_DARK, COLOR_PANEL, 1);
-    draw_num(122, 70, g_ui_data.spo2, COLOR_BLUE, COLOR_PANEL, 2);
-    draw_text(166, 78, "%", COLOR_DARK, COLOR_PANEL, 1);
-    draw_temp(122, 96, g_ui_data.temperature_c10, COLOR_GREEN, COLOR_PANEL, 1);
+    draw_panel(124, 38, 108, 70, COLOR_PANEL);
+    draw_text(134, 48, "SPO2", COLOR_DARK, COLOR_PANEL, 1);
+    draw_num(134, 66, g_ui_data.spo2, COLOR_BLUE, COLOR_PANEL, 2);
+    draw_text(178, 74, "%", COLOR_DARK, COLOR_PANEL, 1);
+    draw_temp(134, 94, g_ui_data.temperature_c10, COLOR_GREEN, COLOR_PANEL, 1);
 
-    draw_panel(216, 40, 96, 72, COLOR_PANEL);
-    draw_text(226, 50, "PILL BOX", COLOR_DARK, COLOR_PANEL, 1);
-    draw_text(226, 70, "SLOT", COLOR_DARK, COLOR_PANEL, 1);
-    draw_num(268, 70, g_ui_data.pillbox_slot, COLOR_ORANGE, COLOR_PANEL, 2);
-    draw_text(226, 96, g_ui_data.servo_open ? "OPEN" : "READY", g_ui_data.servo_open ? COLOR_RED : COLOR_GREEN, COLOR_PANEL, 1);
+    draw_panel(8, 116, 224, 58, COLOR_PANEL);
+    draw_text(20, 128, "PILL BOX", COLOR_DARK, COLOR_PANEL, 1);
+    draw_text(20, 148, "SLOT", COLOR_DARK, COLOR_PANEL, 1);
+    draw_num(62, 142, g_ui_data.pillbox_slot, COLOR_ORANGE, COLOR_PANEL, 2);
+    draw_text(112, 148, g_ui_data.servo_open ? "OPEN" : "READY", g_ui_data.servo_open ? COLOR_RED : COLOR_GREEN, COLOR_PANEL, 1);
 
-    draw_panel(8, 122, 304, 72, COLOR_PANEL);
-    draw_text(20, 134, "SYSTEM FLOW", COLOR_DARK, COLOR_PANEL, 1);
-    draw_text(20, 154, "RTC PILL  HX711  MAX30102  IMU", COLOR_BLUE, COLOR_PANEL, 1);
-    draw_text(20, 174, g_ui_data.alarm_active ? "ALARM ACTIVE - CHECK DETAIL" : "NORMAL MONITORING", g_ui_data.alarm_active ? COLOR_RED : COLOR_GREEN, COLOR_PANEL, 1);
+    draw_panel(8, 182, 224, 92, COLOR_PANEL);
+    draw_text(20, 194, "SYSTEM FLOW", COLOR_DARK, COLOR_PANEL, 1);
+    draw_text(20, 216, "RTC PILL  HX711", COLOR_BLUE, COLOR_PANEL, 1);
+    draw_text(20, 236, "MAX30102  IMU", COLOR_BLUE, COLOR_PANEL, 1);
+    draw_text(20, 256, g_ui_data.alarm_active ? "ALARM ACTIVE" : "NORMAL", g_ui_data.alarm_active ? COLOR_RED : COLOR_GREEN, COLOR_PANEL, 1);
 
     draw_nav();
 }
@@ -558,59 +559,62 @@ static void draw_home(void)
 static void draw_health(void)
 {
     draw_header("HEALTH DETAIL");
-    draw_panel(8, 40, 148, 70, COLOR_PANEL);
-    draw_text(20, 50, "HEART RATE", COLOR_DARK, COLOR_PANEL, 1);
-    draw_num(20, 70, g_ui_data.heart_rate, COLOR_RED, COLOR_PANEL, 2);
-    draw_text(72, 78, "BPM", COLOR_DARK, COLOR_PANEL, 1);
+    draw_panel(8, 38, 224, 56, COLOR_PANEL);
+    draw_text(20, 48, "HEART RATE", COLOR_DARK, COLOR_PANEL, 1);
+    draw_num(20, 66, g_ui_data.heart_rate, COLOR_RED, COLOR_PANEL, 2);
+    draw_text(72, 74, "BPM", COLOR_DARK, COLOR_PANEL, 1);
 
-    draw_panel(164, 40, 148, 70, COLOR_PANEL);
-    draw_text(176, 50, "BLOOD OXYGEN", COLOR_DARK, COLOR_PANEL, 1);
-    draw_num(176, 70, g_ui_data.spo2, COLOR_BLUE, COLOR_PANEL, 2);
-    draw_text(220, 78, "%", COLOR_DARK, COLOR_PANEL, 1);
+    draw_panel(8, 102, 224, 56, COLOR_PANEL);
+    draw_text(20, 112, "BLOOD OXYGEN", COLOR_DARK, COLOR_PANEL, 1);
+    draw_num(20, 130, g_ui_data.spo2, COLOR_BLUE, COLOR_PANEL, 2);
+    draw_text(66, 138, "%", COLOR_DARK, COLOR_PANEL, 1);
 
-    draw_panel(8, 120, 148, 70, COLOR_PANEL);
-    draw_text(20, 130, "TEMP", COLOR_DARK, COLOR_PANEL, 1);
-    draw_temp(20, 152, g_ui_data.temperature_c10, COLOR_GREEN, COLOR_PANEL, 2);
+    draw_panel(8, 166, 224, 48, COLOR_PANEL);
+    draw_text(20, 176, "TEMP", COLOR_DARK, COLOR_PANEL, 1);
+    draw_temp(76, 174, g_ui_data.temperature_c10, COLOR_GREEN, COLOR_PANEL, 2);
 
-    draw_panel(164, 120, 148, 70, COLOR_PANEL);
-    draw_text(176, 130, "POSTURE", COLOR_DARK, COLOR_PANEL, 1);
-    draw_text(176, 150, g_ui_data.fall_detected ? "FALL RISK" : "STABLE", g_ui_data.fall_detected ? COLOR_RED : COLOR_GREEN, COLOR_PANEL, 2);
-    draw_text(176, 176, "PITCH ROLL", COLOR_DARK, COLOR_PANEL, 1);
+    draw_panel(8, 222, 224, 52, COLOR_PANEL);
+    draw_text(20, 232, "POSTURE", COLOR_DARK, COLOR_PANEL, 1);
+    draw_text(20, 252, g_ui_data.fall_detected ? "FALL RISK" : "STABLE", g_ui_data.fall_detected ? COLOR_RED : COLOR_GREEN, COLOR_PANEL, 1);
     draw_nav();
 }
 
 static void draw_pill(void)
 {
     draw_header("PILL DETAIL");
-    draw_panel(8, 40, 148, 70, COLOR_PANEL);
-    draw_text(20, 50, "NEXT SLOT", COLOR_DARK, COLOR_PANEL, 1);
-    draw_num(20, 70, g_ui_data.pillbox_slot, COLOR_ORANGE, COLOR_PANEL, 3);
-    draw_text(78, 82, g_ui_data.servo_open ? "OPEN" : "READY", g_ui_data.servo_open ? COLOR_RED : COLOR_GREEN, COLOR_PANEL, 1);
+    draw_panel(8, 38, 224, 62, COLOR_PANEL);
+    draw_text(20, 48, "NEXT SLOT", COLOR_DARK, COLOR_PANEL, 1);
+    draw_num(20, 66, g_ui_data.pillbox_slot, COLOR_ORANGE, COLOR_PANEL, 2);
+    draw_text(74, 74, g_ui_data.servo_open ? "OPEN" : "READY", g_ui_data.servo_open ? COLOR_RED : COLOR_GREEN, COLOR_PANEL, 1);
 
-    draw_panel(164, 40, 148, 70, COLOR_PANEL);
-    draw_text(176, 50, "WEIGHT", COLOR_DARK, COLOR_PANEL, 1);
-    draw_num(176, 70, g_ui_data.pill_weight_g, COLOR_BLUE, COLOR_PANEL, 2);
-    draw_text(236, 78, "G", COLOR_DARK, COLOR_PANEL, 1);
+    draw_panel(8, 108, 224, 62, COLOR_PANEL);
+    draw_text(20, 118, "WEIGHT", COLOR_DARK, COLOR_PANEL, 1);
+    draw_num(20, 136, g_ui_data.pill_weight_g, COLOR_BLUE, COLOR_PANEL, 2);
+    draw_text(82, 144, "G", COLOR_DARK, COLOR_PANEL, 1);
 
-    draw_panel(8, 120, 304, 70, COLOR_PANEL);
-    draw_text(20, 132, "SERVO MG90S", COLOR_DARK, COLOR_PANEL, 1);
-    draw_text(20, 152, "PWM 50HZ  0.5/1.5/2.5MS", COLOR_BLUE, COLOR_PANEL, 1);
-    draw_text(20, 172, "OPEN SLOT AFTER RTC REMIND", COLOR_GREEN, COLOR_PANEL, 1);
+    draw_panel(8, 178, 224, 96, COLOR_PANEL);
+    draw_text(20, 190, "SERVO MG90S", COLOR_DARK, COLOR_PANEL, 1);
+    draw_text(20, 212, "PWM 50HZ", COLOR_BLUE, COLOR_PANEL, 1);
+    draw_text(20, 232, "0.5 1.5 2.5MS", COLOR_BLUE, COLOR_PANEL, 1);
+    draw_text(20, 252, "RTC REMIND OPEN", COLOR_GREEN, COLOR_PANEL, 1);
     draw_nav();
 }
 
 static void draw_alert(void)
 {
     draw_header("ALERT AND DATA");
-    draw_panel(8, 40, 304, 70, COLOR_PANEL);
-    draw_text(20, 52, "ALARM", COLOR_DARK, COLOR_PANEL, 1);
-    draw_text(90, 50, g_ui_data.alarm_active ? "ACTIVE" : "CLEAR", g_ui_data.alarm_active ? COLOR_RED : COLOR_GREEN, COLOR_PANEL, 2);
-    draw_text(20, 84, "FALL HR SPO2 PILL LOW", COLOR_BLUE, COLOR_PANEL, 1);
+    draw_panel(8, 38, 224, 72, COLOR_PANEL);
+    draw_text(20, 50, "ALARM", COLOR_DARK, COLOR_PANEL, 1);
+    draw_text(20, 72, g_ui_data.alarm_active ? "ACTIVE" : "CLEAR", g_ui_data.alarm_active ? COLOR_RED : COLOR_GREEN, COLOR_PANEL, 2);
+    draw_text(20, 96, "FALL HR SPO2 PILL", COLOR_BLUE, COLOR_PANEL, 1);
 
-    draw_panel(8, 120, 304, 70, COLOR_PANEL);
-    draw_text(20, 132, "CAPTURE PORT", COLOR_DARK, COLOR_PANEL, 1);
-    draw_text(20, 152, "UI_GETCAPTUREFRAME", COLOR_BLUE, COLOR_PANEL, 1);
-    draw_text(20, 172, "READY FOR UART WIFI PACKET", COLOR_GREEN, COLOR_PANEL, 1);
+    draw_panel(8, 122, 224, 96, COLOR_PANEL);
+    draw_text(20, 134, "CAPTURE PORT", COLOR_DARK, COLOR_PANEL, 1);
+    draw_text(20, 156, "UI GET FRAME", COLOR_BLUE, COLOR_PANEL, 1);
+    draw_text(20, 176, "UART WIFI PACKET", COLOR_GREEN, COLOR_PANEL, 1);
+
+    draw_panel(8, 230, 224, 44, COLOR_PANEL);
+    draw_text(20, 244, "PACKET A5 VER DATA SUM", COLOR_DARK, COLOR_PANEL, 1);
     draw_nav();
 }
 
@@ -746,23 +750,28 @@ void UI_OnTouch(uint16_t x, uint16_t y, uint8_t pressed)
         return;
     }
 
-    if (y >= 206U) {
-        g_current_page = (uint8_t)(x / 80U);
+    if (y >= 286U) {
+        g_current_page = (uint8_t)(x / 60U);
         if (g_current_page > 3U) g_current_page = 3U;
         g_needs_redraw = 1;
         return;
     }
 
     if (g_current_page == 0U) {
-        if (y >= 40U && y <= 112U) {
-            if (x < 108U) g_current_page = 1U;
-            else if (x < 212U) g_current_page = 1U;
-            else g_current_page = 2U;
+        if (y >= 38U && y <= 108U) {
+            if (x < 120U) g_current_page = 1U;
+            else g_current_page = 1U;
             g_needs_redraw = 1;
             return;
         }
 
-        if (y >= 122U && y <= 194U) {
+        if (y >= 116U && y <= 174U) {
+            g_current_page = 2U;
+            g_needs_redraw = 1;
+            return;
+        }
+
+        if (y >= 182U && y <= 274U) {
             g_current_page = 3U;
             g_needs_redraw = 1;
         }
